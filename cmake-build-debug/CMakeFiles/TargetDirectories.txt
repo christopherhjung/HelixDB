@@ -1,3 +1,0 @@
-/home/chris/CLionProjects/HelixDB/cmake-build-debug/CMakeFiles/edit_cache.dir
-/home/chris/CLionProjects/HelixDB/cmake-build-debug/CMakeFiles/rebuild_cache.dir
-/home/chris/CLionProjects/HelixDB/cmake-build-debug/CMakeFiles/HelixDB.dir
