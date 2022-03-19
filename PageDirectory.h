@@ -49,10 +49,10 @@ public:
     }
 
     Frame *fetchFrame(u32 key, bool create){
-        u32 level1 = key >> 22;
+        u32 level1 = (key >> 12) & 0x3ff;
         auto *level2Frame = (PageDirectoryFrame*)getOrCreate(level1, rootFrame, create);
         return_null_if_null(level2Frame);
-        u32 level2 = (key >> 12) & 0x3ff;
+        u32 level2 = key & 0x3ff;
         auto *level3Frame = getOrCreate(level2, level2Frame, create);
         level2Frame->close();
         return level3Frame;
@@ -60,7 +60,7 @@ public:
 
     template<class T>
     void set(u32 key, T value){
-        auto *frame = fetchFrame(key, true);
+        auto *frame = fetchFrame(key >> 12, true);
         return_if_null(frame);
         u32 level3 = key & 0xfff;
 
@@ -72,7 +72,7 @@ public:
 
     template<class T>
     T get(u32 key){
-        auto *frame = fetchFrame(key, true);
+        auto *frame = fetchFrame(key >> 12, true);
         assert(frame, "No frame found with key = " + std::to_string(key));
         u32 level3 = key & 0xfff;
 
