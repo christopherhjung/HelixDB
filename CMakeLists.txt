@@ -7,6 +7,7 @@ add_executable(HelixDB
         main.cpp
         MainFrame.cpp
         PageDirectory.cpp
+        ClassCollectionHeader.cpp
         Frame.cpp
         DiskManager.cpp
         BufferPool.cpp)

@@ -8,41 +8,46 @@
 #include "Frame.h"
 #include "defs.h"
 
+class FrameFragment{
 
-template<class H, class T>
+};
+
 class SlotDirectory{
     PageDirectory pageDirectory;
-    i32 lastPageId = -1;
-    Frame *lastFrame = nullptr;
+    u32 entrySize = 0;
+    u32 headerSize = 0;
+    u32 entriesPerPage = 0;
 
-    int getPageId(int index){
-        return index / round_down(PAGE_SIZE, sizeof(T));
+    u32 getPageId(u32 index){
+        return index / entriesPerPage;
     }
 
-    int getPageSlot(int index){
-        return (index % round_down(PAGE_SIZE, sizeof(T)));
+    u32 getPageSlot(u32 index){
+        return index % entriesPerPage;
     }
 
-    int getPageOffset(int index){
-        return getPageSlot(index) * sizeof(T);
+    u32 getPageOffset(u32 index){
+        return headerSize + getPageSlot(index) * entrySize;
     }
 public:
-    SlotDirectory(Allocator *allocator, Frame *frame) : pageDirectory(allocator, frame){
-
+    SlotDirectory(Allocator *allocator, Frame *frame, u32 headerSize, u32 entrySize) :
+        pageDirectory(allocator, frame), headerSize(headerSize), entrySize(entrySize){
+        entriesPerPage = round_down(PAGE_SIZE - headerSize, entrySize);
     }
 
     Frame *fetchFrame(u32 index){
-        return pageDirectory.fetchFrame(getPageId(index)  , true);
+        return pageDirectory.fetchFrame(getPageId(index), true);
     }
 
+    template<class H>
     void setHeader(Frame* frame, H& value){
         return_if_null(frame);
-        u32 slot = getPageSlot(index);
         *((H*)frame->getData()) = value;
         frame->flush();
         frame->close();
     }
 
+    template<class H>
     bool getHeader(Frame *frame, H& value){
         if(frame == nullptr){
             return false;
@@ -52,30 +57,200 @@ public:
         return true;
     }
 
+    template<class T>
     void set(Frame* frame, u32 index, T& value){
         return_if_null(frame);
-        u32 slot = getPageSlot(index);
-        ((T*)frame->getData())[slot] = value;
+        u32 offset = getPageOffset(index);
+        *((T*)(frame->getData() + offset)) = value;
         frame->flush();
         frame->close();
     }
 
+    template<class T>
     void set(u32 index, T& value){
         set(pageDirectory.fetchFrame(getPageId(index), true), index, value);
     }
 
+    template<class T>
     bool get(u32 index, T& value){
         return get(pageDirectory.fetchFrame(getPageId(index), false), index, value);
     }
 
+    template<class T>
     bool get(Frame *frame, u32 index, T& value){
         if(frame == nullptr){
             return false;
         }
-        u32 slot = getPageOffset(index);
-        value = ((T*)frame->getData())[slot];
+        u32 offset = getPageOffset(index);
+        value = *((T*)(frame->getData() + offset));
         frame->close();
         return true;
     }
 };
 
+
+
+class SlotController{
+    u32 entrySize = 0;
+    u32 headerSize = 0;
+    u32 entriesPerPage = 0;
+public:
+    template<class H, class C>
+    SlotController( ) : SlotController(sizeof(H), sizeof(C)){
+        entriesPerPage = round_down(PAGE_SIZE - headerSize, entrySize);
+    }
+    template<class C>
+    SlotController( ) : SlotController(0, sizeof(C)){
+        entriesPerPage = round_down(PAGE_SIZE - headerSize, entrySize);
+    }
+
+    SlotController( u32 headerSize, u32 entrySize) : headerSize(headerSize), entrySize(entrySize){
+        entriesPerPage = round_down(PAGE_SIZE - headerSize, entrySize);
+    }
+
+    u32 getPageId(u32 index){
+        return index / entriesPerPage;
+    }
+
+    u32 getPageSlot(u32 index){
+        return index % entriesPerPage;
+    }
+
+    u32 getPageOffset(u32 index){
+        return headerSize + getPageSlot(index) * entrySize;
+    }
+
+
+    Frame *fetchFrame(PageDirectory * pageDirectory, u32 index, bool create = false){
+        return pageDirectory->fetchFrame(getPageId(index), create);
+    }
+
+    template<class H>
+    void setHeader(Frame* frame, H& value){
+        return_if_null(frame);
+        *((H*)frame->getData()) = value;
+        frame->flush();
+        frame->close();
+    }
+
+    template<class H>
+    bool getHeader(Frame *frame, H& value){
+        if(frame == nullptr){
+            return false;
+        }
+        value = *((H*)frame->getData());
+        frame->close();
+        return true;
+    }
+
+    template<class T>
+    void set(Frame* frame, u32 index, T& value){
+        return_if_null(frame);
+        u32 offset = getPageOffset(index);
+        *((T*)(frame->getData() + offset)) = value;
+        frame->flush();
+    }
+
+    template<class T>
+    void set(PageDirectory *pageDirectory, u32 index, T& value){
+        Frame *frame = fetchFrame(pageDirectory, getPageId(index), true);
+        set(frame, index, value);
+        frame->close();
+    }
+
+    template<class T>
+    void apply(PageDirectory *pageDirectory, u32 index, T& value, u8 operation){
+        Frame *frame = fetchFrame(pageDirectory, getPageId(index), true);
+
+        if(operation == GET){
+            get(frame, index, value);
+        }else if(operation == SET){
+            set(frame, index, value);
+        }else{
+            error("no set or get");
+        }
+
+        frame->close();
+    }
+
+    template<class T>
+    bool get(PageDirectory *pageDirectory, u32 index, T& value){
+        Frame *frame = fetchFrame(pageDirectory, getPageId(index), false);
+        bool success = get(frame, index, value);
+        frame->close();
+        return success;
+    }
+
+    template<class T>
+    bool get(Frame *frame, u32 index, T& value){
+        if(frame == nullptr){
+            return false;
+        }
+        u32 offset = getPageOffset(index);
+        value = *((T*)(frame->getData() + offset));
+        frame->close();
+        return true;
+    }
+};
+
+
+/*
+template<class T>
+class SlotController {
+    GenericSlotController controller;
+
+    SlotController(u32 header) : controller(header, sizeof(T)) {
+
+    }
+public:
+
+    SlotController() : controller(0, sizeof(T)) {
+
+    }
+
+    Frame *fetchFrame(PageDirectory *directory, u32 index){
+        return directory->fetchFrame(controller.getPageId(index), true);
+    }
+
+    void set(Frame *frame, u32 index, T &value) {
+        return_if_null(frame);
+        u32 slot = controller.getPageSlot(index);
+        ((T *) frame->getData())[slot] = value;
+        frame->flush();
+        frame->close();
+    }
+
+    bool get(Frame *frame, u32 index, T &value) {
+        if (frame == nullptr) {
+            return false;
+        }
+        u32 slot = controller.getPageOffset(index);
+        value = ((T *) frame->getData())[slot];
+        frame->close();
+        return true;
+    };
+};
+
+template<class H, class T>
+class HeaderSlotController : public SlotController<T>{
+
+    HeaderSlotController() : HeaderSlotController(sizeof(H)){
+
+    }
+
+    void setHeader(Frame *frame, H &value) {
+        return_if_null(frame);
+        *((H *) frame->getData()) = value;
+        frame->flush();
+        frame->close();
+    }
+
+    bool getHeader(Frame *frame, H &value) {
+        if (frame == nullptr) {
+            return false;
+        }
+        value = *((H *) frame->getData());
+        frame->close();
+        return true;
+    }
+};*/

@@ -11,6 +11,7 @@
 static i8 zeros[PAGE_SIZE]{0};
 
 class BufferPool{
+public:
     virtual Frame *fetch(u32 pageIndex, bool pinned = false) = 0;
     virtual void flush(Frame *frame) = 0;
     virtual void refresh(Frame *frame) = 0;

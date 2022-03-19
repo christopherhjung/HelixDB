@@ -7,6 +7,7 @@
 #include "defs.h"
 class BufferPoolImpl;
 class MainFrame;
+class ClassCollectionHeader;
 
 class Frame{
     friend BufferPoolImpl;
@@ -29,6 +30,10 @@ public:
 
     MainFrame* asMainFrame(){
         return (MainFrame*)(this);
+    }
+
+    ClassCollectionHeader* asClassCollectionHeader(){
+        return (ClassCollectionHeader*)(this);
     }
 
     u32 getPageId(){

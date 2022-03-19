@@ -12,13 +12,13 @@
 
 
 class Allocator : BufferPool{
-    BufferPoolImpl *bufferPool;
+    BufferPool *bufferPool;
     MainFrame* mainFrame;
     u32 poolSize;
     u32 current = 0;
 
 public:
-    Allocator(BufferPoolImpl *bufferPool, MainFrame* mainFrame) : bufferPool(bufferPool), mainFrame(mainFrame){
+    Allocator(BufferPool *bufferPool, MainFrame* mainFrame) : bufferPool(bufferPool), mainFrame(mainFrame){
 
     }
 
