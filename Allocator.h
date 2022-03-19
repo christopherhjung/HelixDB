@@ -42,6 +42,13 @@ public:
         return newPageFrame;
     }
 
+    u32 allocPageId(){
+        Frame *frame = allocPage();
+        u32 pageId = frame->getPageId();
+        frame->close();
+        return pageId;
+    }
+
     Frame *fetch(u32 pageIndex, bool pinned = false) override{
         return bufferPool->fetch(pageIndex, pinned);
     }

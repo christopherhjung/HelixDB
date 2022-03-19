@@ -10,6 +10,9 @@ typedef unsigned char u8;
 
 #define foreach(i, size) for(u32 i = 0 ; i < (size) ; i++)
 
+#define round_down(X, STEP) ((X) / (STEP) * (STEP))
+
+
 #define return_null_if_null(ptr) if((ptr) == nullptr) return nullptr;
 #define return_if_null(ptr) if((ptr) == nullptr) return;
 #define return_null_if(condition) if(condition) return nullptr;

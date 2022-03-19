@@ -18,6 +18,7 @@
 #include "MainFrame.h"
 #include "Allocator.h"
 #include "PageDirectory.h"
+#include "SlotDirectory.h"
 
 u64 filesize(const char* filename)
 {
@@ -25,20 +26,16 @@ u64 filesize(const char* filename)
     return in.tellg();
 }
 
-struct DBMain{
-    u32 freePages;
-    u32 usedPageSize;
-    u32 classArray;
+
+struct ClassEntry{
+    u32 entriesPageId;
+    u32 propertiesPageId;
 };
 
-#define FREE_PAGE_QUEUE_SIZE 10
-#define BUFFER_SIZE 8
-
-
-
-
-
-
+struct Instance{
+    u32 key;
+    u32 value;
+};
 
 int main () {
 
@@ -64,65 +61,34 @@ int main () {
     u32 pdPage = mainFrame->get<u32>(12);
     Frame *pdFrame = allocator->fetch(pdPage);
 
+    auto *types = new SlotDirectory<ClassEntry>(allocator, pdFrame);
 
-    PageDirectory *pageDirectory = new PageDirectory(allocator, pdFrame);
+    ClassEntry classEntry{};
 
     if(size == 0){
-        pageDirectory->set(0, 111);
-        pageDirectory->set(92838, 222);
+        classEntry.entriesPageId = allocator->allocPageId();
+        classEntry.propertiesPageId = allocator->allocPageId();
+        types->set(0, classEntry);
     }
 
-    std::cout << pageDirectory->get<u32>(0) << std::endl;
-    std::cout << pageDirectory->get<u32>(92838) << std::endl;
+    types->get(0, classEntry);
+
+    std::cout << classEntry.entriesPageId << std::endl;
+    std::cout << classEntry.propertiesPageId << std::endl;
+
+    Frame *entriesFrame = allocator->fetch(classEntry.entriesPageId);
+    auto *entriesDirectory = new SlotDirectory<Instance>(allocator, entriesFrame);
+
+    Instance instance;
+    instance.key = 22;
+    instance.value = 99;
+    entriesDirectory->set(0, instance);
 
 
     std::cout << mainFrame->getPageCount() << std::endl;
     std::cout << diskManager->getSize() << std::endl;
 
 
-
-    //auto mainPage = pool->fetch(0);
-
-
-/*
-    auto *arrayList = new ArrayList(pool, mainPage->classArray);
-
-    if(init){
-        arrayList->set(0, 1111);
-        arrayList->set(1, 2222);
-    }
-
-    u64 value = arrayList->get(0);
-    u64 value2 = arrayList->get(1);
-    std::cout << test << " " << value << " " << value2;
-
-    diskManager->close();*/
-/*
-    u32 frameId = pool->fetch(0);
-
-    byte* page = pool->getContent(frameId);
-
-
-    page[0] = 77;
-
-    pool->flush(0);
-
-    page[0] = 1;
-
-    pool->refresh(0);
-    std::cout << (int)page[0];
-
-    pool->free(frameId);*/
-/*
-    u32 result;
-    bool success = pageDirectory->lookup(0, &result);
-    std::cout << success << " " << result;
-*/
-/*    u64 size = filesize(db);
-
-
-    myfile.write(test, BLOCK_SIZE);
-*/
 
     return 0;
 }
