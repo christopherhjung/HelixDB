@@ -88,7 +88,7 @@ public:
     }
 };
 
-
+#define PAGE_BYTE_SIZE (PAGE_SIZE >> 3)
 
 class SlotController{
     u32 entrySize = 0;
@@ -97,15 +97,15 @@ class SlotController{
 public:
     template<class H, class C>
     SlotController( ) : SlotController(sizeof(H), sizeof(C)){
-        entriesPerPage = round_down(PAGE_SIZE - headerSize, entrySize);
+        entriesPerPage = round_down(PAGE_BYTE_SIZE - headerSize, entrySize);
     }
     template<class C>
     SlotController( ) : SlotController(0, sizeof(C)){
-        entriesPerPage = round_down(PAGE_SIZE - headerSize, entrySize);
+        entriesPerPage = round_down(PAGE_BYTE_SIZE - headerSize, entrySize);
     }
 
     SlotController( u32 headerSize, u32 entrySize) : headerSize(headerSize), entrySize(entrySize){
-        entriesPerPage = round_down(PAGE_SIZE - headerSize, entrySize);
+        entriesPerPage = round_down(PAGE_BYTE_SIZE - headerSize, entrySize);
     }
 
     u32 getPageId(u32 index){
@@ -128,8 +128,7 @@ public:
     template<class H>
     void setHeader(Frame* frame, H& value){
         return_if_null(frame);
-        *((H*)frame->getData()) = value;
-        frame->flush();
+        std::memcpy(frame->getData(), &value, headerSize );
         frame->close();
     }
 
@@ -138,7 +137,8 @@ public:
         if(frame == nullptr){
             return false;
         }
-        value = *((H*)frame->getData());
+
+        std::memcpy(&value, frame->getData(), headerSize );
         frame->close();
         return true;
     }
@@ -147,7 +147,7 @@ public:
     void set(Frame* frame, u32 index, T& value){
         return_if_null(frame);
         u32 offset = getPageOffset(index);
-        *((T*)(frame->getData() + offset)) = value;
+        std::memcpy(frame->getData() + offset, &value, entrySize);
         frame->flush();
     }
 
@@ -187,7 +187,7 @@ public:
             return false;
         }
         u32 offset = getPageOffset(index);
-        value = *((T*)(frame->getData() + offset));
+        std::memcpy(&value, frame->getData() + offset, entrySize);
         frame->close();
         return true;
     }

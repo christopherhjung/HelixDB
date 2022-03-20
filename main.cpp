@@ -252,7 +252,7 @@ public:
         u32 offset = instanceId & 0xffffffff;
         Frame *propertyValueRootFrame = allocator->fetch(propertyEntry.valueRootPage);
         PageDirectory pageDirectory(allocator, propertyValueRootFrame); //prop values
-        SlotController controller(0, propertyEntry.byteWidth * 8);
+        SlotController controller(0, propertyEntry.byteWidth);
         controller.apply(&pageDirectory, offset, value, operation);
         propertyValueRootFrame->close();
     }
@@ -274,7 +274,7 @@ public:
     }
 
     u64 getPropertyValue( u64 instanceId, const std::string& propertyName){
-        u64 value;
+        u64 value = 0;
         applyPropertyValue(instanceId, propertyName, value, GET);
         return value;
     }
@@ -294,11 +294,11 @@ int main () {
 
     if(!db->exists("User")){
         db->createClass("User");
-        db->createProperty("User", "amount", 32);
+        db->createProperty("User", "amount", 4);
     }
 
     bool test = true;
-    if( !db->exists("haha")){
+    if(test && !db->exists("haha")){
         db->createProperty("User", "haha", 32);
     }
 
@@ -306,11 +306,12 @@ int main () {
 
     u64 instance = db->createInstance("User");
 
+    db->setPropertyValue(instance, "amount", 777);
+
+
     if(test){
-        db->setPropertyValue(instance, "amount", 955);
         db->setPropertyValue(instance, "haha", 444);
     }
-
 
 
     u64 instanceClassified = db->classify(instance, "User");
