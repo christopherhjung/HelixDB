@@ -25,7 +25,7 @@ public:
     }
 
     void flush();
-    void close();
+    void close(bool doFlush = true);
     void clear();
 
     MainFrame* asMainFrame(){
@@ -48,6 +48,16 @@ public:
     template<class V>
     void get(u32 index, V* value){
         *value = get<V>(index);
+    };
+
+    template<class V>
+    V* map(){
+        return ((V*)(buffer));
+    };
+
+    template<class V>
+    V* mapIndexed(u32 index){
+        return ((V*)(buffer)) + index;
     };
 
     template<class V>

@@ -9,7 +9,10 @@ void Frame::flush(){
     pool->flush(this);
 }
 
-void Frame::close(){
+void Frame::close(bool doFlush){
+    if(doFlush){
+        flush();
+    }
     pool->close(this);
 }
 

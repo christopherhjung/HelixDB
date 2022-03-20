@@ -111,32 +111,37 @@ public:
     }
 
     void shutdown(){
-        nameFrame->flush();
-        mainFrame->flush();
+        nameFrame->close();
+        mainFrame->close();
     }
 
     void addName(const std::string& name, u32 index){
         keyValues[currentValue++].set(name, index);
     }
 
-    u32 findName( const std::string& name){
+    i32 findName( const std::string& name, bool shallExist = true){
         for(int i = 0 ; i < 20 ; i++){
             if(strcmp(keyValues[i].name, name.c_str()) == 0){
                 return keyValues[i].index;
             }
         }
 
-        error("Name not found: " + name);
+        if(shallExist){
+            error("Name not found: " + name);
+        }else{
+            return -1;
+        }
     }
 
-    u32 addClass(const std::string& name){
-        ClassEntry classEntry{};
+    u32 createClass(const std::string& name){
         u32 classIndex = classCount++;
-        classEntry.entriesPageId = allocator->allocPageId();
-        classEntry.propertiesPageId = allocator->allocPageId();
-        classEntry.propertyCount = 0;
+        Frame* frame = classDirectory->fetchFrame(classIndex, true);
+        auto *classEntry = frame->map<ClassEntry>() + classIndex;
+        classEntry->entriesPageId = allocator->allocPageId();
+        classEntry->propertiesPageId = allocator->allocPageId();
+        classEntry->propertyCount = 0;
         addName(name, classIndex);
-        classDirectory->set(classIndex, classEntry);
+        frame->close();
         return classIndex;
     }
 
@@ -144,31 +149,36 @@ public:
         return getClass(findName(name));
     }
 
+    bool exists(const std::string& name){
+        return findName(name, false) >= 0;
+    };
+
     ClassEntry getClass(u32 classId){
         ClassEntry classEntry{};
         classController.get(classDirectory, classId, classEntry);
         return classEntry;
     }
 
-    u32 addProperty(const std::string&  className, const std::string& propertyName, u16 byteWidth){
-        u32 classId = findName(className);
-        Frame *classFrame = classDirectory->fetchFrame(classId);
-        ClassEntry classEntry{};
-        classFrame->get(classId, &classEntry);
+    u32 createProperty(const std::string&  className, const std::string& propertyName, u16 byteWidth){
+        return addProperty(findName(className), propertyName, byteWidth);
+    }
 
-        Frame *propertiesRootFrame = allocator->fetch(classEntry.propertiesPageId);
+    u32 addProperty(u32 classId, const std::string& propertyName, u16 byteWidth){
+        Frame *classFrame = classDirectory->fetchFrame(classId);
+        ClassEntry *classEntry = classFrame->map<ClassEntry>() + classId;
+
+        Frame *propertiesRootFrame = allocator->fetch(classEntry->propertiesPageId);
         PageDirectory propertiesDirectory(allocator, propertiesRootFrame); //props per class
 
-        u32 propertyId = classEntry.propertyCount++;
+        u32 propertyId = classEntry->propertyCount++;
 
         PropertyEntry propertyFrame{};
         propertyFrame.valueRootPage = allocator->allocPageId();
         propertyFrame.byteWidth = byteWidth;
 
         addName(propertyName, propertyId);
-        propertiesDirectory.set(propertyId, propertyFrame);
+        propertyController.set(&propertiesDirectory, propertyId, propertyFrame);
 
-        classFrame->flush();
         classFrame->close();
         return propertyId;
     }
@@ -215,15 +225,14 @@ public:
 
         if(header.count == 0){
             header.classId = classId; //init header
-            header.count = 1;
-        }else{
-            header.count++;
         }
+
+        header.count++;
 
         instance.propertyOffset = instanceIndex;
         entriesDirectory.set(instanceIndex, instance);
         instanceController.setHeader(instancesFrame, header);
-        return ((u64)classId << 32) | instanceIndex;
+        return classify(instanceIndex, classId);
     }
 
     PropertyEntry getPropertyEntry(u64 instanceId, u32 propertyId){
@@ -232,7 +241,7 @@ public:
 
         PropertyEntry propertyEntry;
         propertyController.get(propertyFrame, propertyId, propertyEntry);
-        propertyFrame->flush();
+        propertyFrame->close();
 
         return propertyEntry;
     }
@@ -244,9 +253,7 @@ public:
         Frame *propertyValueRootFrame = allocator->fetch(propertyEntry.valueRootPage);
         PageDirectory pageDirectory(allocator, propertyValueRootFrame); //prop values
         SlotController controller(0, propertyEntry.byteWidth * 8);
-
         controller.apply(&pageDirectory, offset, value, operation);
-
         propertyValueRootFrame->close();
     }
 
@@ -255,7 +262,11 @@ public:
     }
 
     u64 classify(u32 instanceId, const std::string& className){
-        return (((u64) findName(className)) << 32) | (instanceId & 0xffffffff);
+        return classify(((u64) findName(className)) << 32, instanceId);
+    }
+
+    u64 classify(u32 instanceId, u32 classId){
+        return classId | (instanceId & 0xffffffff);
     }
 
     u64 getPropertyValue( u32 instanceId, const std::string& className, const std::string& propertyName){
@@ -281,34 +292,42 @@ int main () {
 
     DB *db = new DB("test.db");
 
-    if(db->isInit()){
-        u64 classIndex = db->addClass("User");
-        std::cout << classIndex << std::endl;
+    if(!db->exists("User")){
+        db->createClass("User");
+        db->createProperty("User", "amount", 32);
     }
 
-    ClassEntry classEntry = db->getClass("User");
-
-    if(db->isInit()){
-        db->addProperty("User", "amount", 32);
+    bool test = true;
+    if( !db->exists("haha")){
+        db->createProperty("User", "haha", 32);
     }
 
     PropertyEntry propertyEntry = db->getProperty("User", "amount");
 
     u64 instance = db->createInstance("User");
 
-    db->setPropertyValue(instance, "amount", 955);
+    if(test){
+        db->setPropertyValue(instance, "amount", 955);
+        db->setPropertyValue(instance, "haha", 444);
+    }
+
+
 
     u64 instanceClassified = db->classify(instance, "User");
     u64 value = db->getPropertyValue(instanceClassified, "amount");
 
+    if(test){
+        u64 value2 = db->getPropertyValue(instanceClassified, "haha");
+        std::cout << "value2:" << value2 << std::endl;
+    }
+
     std::cout << "offset:" << instance << std::endl;
     std::cout << "value:" << value << std::endl;
     std::cout << propertyEntry.byteWidth << std::endl;
-    std::cout << classEntry.entriesPageId << std::endl;
-    std::cout << classEntry.propertiesPageId << std::endl;
-    db->shutdown();
 
     std::cout << "Page count:" << db->getPageCount() << std::endl;
     std::cout << "Size:" << db->getSize() << std::endl;
+
+    db->shutdown();
     return 0;
 }
