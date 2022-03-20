@@ -172,9 +172,10 @@ public:
 
         u32 propertyId = classEntry->propertyCount++;
 
-        PropertyEntry propertyFrame{};
-        propertyFrame.valueRootPage = allocator->allocPageId();
-        propertyFrame.byteWidth = byteWidth;
+        PropertyEntry propertyFrame{
+            .valueRootPage = allocator->allocPageId(),
+            .byteWidth = byteWidth
+        };
 
         addName(propertyName, propertyId);
         propertyController.set(&propertiesDirectory, propertyId, propertyFrame);
