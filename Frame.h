@@ -16,6 +16,7 @@ class Frame{
     bool clean;
     u32 frameIndex;
     u32 pageId;
+    bool dirty;
 protected:
     i8 buffer[PAGE_SIZE];
     BufferPoolImpl *pool;
@@ -25,7 +26,7 @@ public:
     }
 
     void flush();
-    void close(bool doFlush = true);
+    void close(bool dirty = true);
     void open();
     void clear();
 

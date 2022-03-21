@@ -9,10 +9,15 @@ void Frame::flush(){
     pool->flush(this);
 }
 
-void Frame::close(bool doFlush){
-    if(doFlush){
-        flush();
+void Frame::close(bool dirty){
+    if(refs == 1){
+        if(dirty || this->dirty){
+            flush();
+        }
+    }else if(dirty){
+        this->dirty = true;
     }
+
     pool->close(this);
 }
 

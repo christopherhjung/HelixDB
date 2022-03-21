@@ -14,6 +14,7 @@
 #include <mutex>  // NOLINT
 #include <string>
 #include <thread>  // NOLINT
+#include <chrono>
 #include "DiskManager.h"
 #include "BufferPoolImpl.h"
 #include "MainFrame.h"
@@ -22,6 +23,8 @@
 #include "SlotDirectory.h"
 #include "ClassCollectionHeader.h"
 #include "defs.h"
+
+using namespace std::chrono;
 
 struct ClassEntry{
     u32 entriesPageId;
@@ -77,6 +80,9 @@ class DB{
     u32 currentValue = 0;
 public:
     DB(const std::string& fileName){
+        setvbuf(stdout, nullptr, _IONBF, 0);
+        setvbuf(stderr, nullptr, _IONBF, 0);
+
         diskManager = new DiskManager(fileName);
         bufferPool = new BufferPoolImpl(diskManager, 16);
         u32 size = diskManager->getSize();
@@ -320,50 +326,16 @@ public:
 int setProp = 0;
 int createInstance = 0;
 
-int main () {
-
-    DB *db = new DB("test.db");
-
-    if(!db->exists("User")){
-        db->createClass("User");
-        db->createProperty("User", "amount", 4);
-        db->createProperty("User", "hash", 1);
-    }
-
-
-    PropertyEntry propertyEntry = db->getProperty("User", "amount");
-/*
- *
-    bool test = true;
-    if(test && !db->exists("haha")){
-        db->createProperty("User", "haha", 32);
-    }
-    u64 instance = db->createInstance("User");
-
-    db->setPropertyValue(instance, "amount", 777);
-
-
-    if(test){
-        db->setPropertyValue(instance, "haha", 444);
-    }
-
-
-    u64 instanceClassified = db->classify(instance, "User");
-    u64 value = db->getPropertyValue(instanceClassified, "amount");
-
-    if(test){
-        u64 value2 = db->getPropertyValue(instanceClassified, "haha");
-        std::cout << "value2:" << value2 << std::endl;
-    }*/
-
-
+void test(DB *db){
     std::default_random_engine dev(0);
     std::uniform_int_distribution<int> dist(1, 99999999);
-    std::uniform_int_distribution<int> dist2(1, 255);
+    std::uniform_int_distribution<int> dist2(1, 32563242);
 
     debugCounter = &createInstance;
     u64 startInstance = 0;
-    int size = 10000;
+    int size = 100000;
+
+    auto start = high_resolution_clock::now();
 
     u32 classId = db->findName("User");
     u32 propertyId = db->findName("amount");
@@ -380,11 +352,16 @@ int main () {
         debugCounter = &setProp;
         db->setPropertyValue(instance, propertyId, &number);
 
-        u8 number2 = dist2(dev);
+        u32 number2 = dist2(dev);
         db->setPropertyValue(instance, hashId, &number2);
 
         debugCounter = &createInstance;
     }
+
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop - start);
+
+    std::cout << "MILLIS: "<< duration.count() << std::endl;
 
     std::cout << "setProp:" << setProp << std::endl;
     std::cout << "createInstance:" << createInstance << std::endl;
@@ -398,22 +375,51 @@ int main () {
         u32 value = 0;
         db->getPropertyValue(instanceClassified, "amount", &value);
         check(value == number, "Test fehler at index:" + std::to_string(i) + " " + std::to_string(value) + " != " +
-                                 std::to_string(number));
+                               std::to_string(number));
 
         value = 0;
         db->getPropertyValue(instanceClassified, "hash", &value);
 
-        u8 number2 = dist2(dev);
+        u32 number2 = dist2(dev);
         check(value == number2, "Test fehler at index:" + std::to_string(i) + " " + std::to_string(value) + " != " +
-                std::to_string(number2));
+                                std::to_string(number2));
     }
 
+    PropertyEntry propertyEntry = db->getProperty("User", "amount");
     std::cout << "offset:" << startInstance + size << std::endl;
     std::cout << propertyEntry.byteWidth << std::endl;
 
     std::cout << "Page count:" << db->getPageCount() << std::endl;
     std::cout << "Size:" << db->getSize() << std::endl;
+}
+
+void create(DB *db){
+    if(!db->exists("User")){
+        db->createClass("User");
+        db->createProperty("User", "amount", 4);
+        db->createProperty("User", "hash", 4);
+    }
+}
+
+int main () {
+    auto start = high_resolution_clock::now();
+    DB *db = new DB("test.db");
+
+    //create(db);
+    //test(db);
+
+    u32 value = 0;
+    u64 instance = DB::classify(98332, db->findName("User"));
+    db->getPropertyValue(instance, "amount", &value);
+
+    std::cout << "Value:" << value << std::endl;
 
     db->shutdown();
+
+
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop - start);
+
+    std::cout << "OVERALL RUNTIME: "<< duration.count() << std::endl;
     return 0;
 }
