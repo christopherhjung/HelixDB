@@ -140,7 +140,22 @@ void runStatement(TParser::StatementContext *statement, DB* db){
             printf("Value %d added to Property %s of instance %lu\n", value, propertyName.c_str(), instanceId);
         }
     }else if(TParser::SelectContext *selectContext = statement->select()){
+        std::string className = selectContext->type->getText();
+        //std::string selectContext->name->getText();
 
+        u32 classId = db->findName(className);
+        u32 index = std::stoi(selectContext->id->getText());
+
+        u64 instance = DB::classify(index, classId);
+
+        TParser::ExprContext *expression = selectContext->expression;
+
+        //expression->variable
+        std::string propertyName = expression->property->getText();
+
+        u32 value;
+        db->getPropertyValue(instance, propertyName, &value);
+        printf("Property value of %s is %d\n", propertyName.c_str(), value);
     }else if(TParser::CreateClassContext *createClassContext = statement->createClass()){
         std::string className = createClassContext->name->getText();
         db->createClass(className);

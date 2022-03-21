@@ -23,6 +23,7 @@ Insert: 'insert';
 Create: 'create';
 Class: 'class';
 Property: 'property';
+Where: 'where';
 OpenBracket: '[';
 CloseBracket: ']';
 OpenParenthesis: '(';
