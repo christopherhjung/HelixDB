@@ -8,6 +8,8 @@
 #include <iostream>
 #include <filesystem>
 #include <stdio.h>
+#include <random>
+#include <iostream>
 #include <string.h>
 #include <mutex>  // NOLINT
 #include <string>
@@ -155,7 +157,7 @@ public:
 
     ClassEntry getClass(u32 classId){
         ClassEntry classEntry{};
-        classController.get(classDirectory, classId, classEntry);
+        classController.get(classDirectory, classId, &classEntry);
         return classEntry;
     }
 
@@ -165,7 +167,8 @@ public:
 
     u32 addProperty(u32 classId, const std::string& propertyName, u16 byteWidth){
         Frame *classFrame = classDirectory->fetchFrame(classId);
-        ClassEntry *classEntry = classFrame->map<ClassEntry>() + classId;
+
+        ClassEntry *classEntry = classController.map<ClassEntry>(classFrame, classId);
 
         Frame *propertiesRootFrame = allocator->fetch(classEntry->propertiesPageId);
         PageDirectory propertiesDirectory(allocator, propertiesRootFrame); //props per class
@@ -178,7 +181,7 @@ public:
         };
 
         addName(propertyName, propertyId);
-        propertyController.set(&propertiesDirectory, propertyId, propertyFrame);
+        propertyController.set(&propertiesDirectory, propertyId, &propertyFrame);
 
         classFrame->close();
         return propertyId;
@@ -204,7 +207,7 @@ public:
 
         PropertyEntry propertyFrame{};
         Frame* frame = propertiesDirectory->fetchFrame(propertyId);
-        propertyController.get(frame, propertyId, propertyFrame);
+        propertyController.get(frame, propertyId, &propertyFrame);
         return propertyFrame;
     }
 
@@ -220,7 +223,7 @@ public:
         InstanceEntry instance{};
         InstanceHeader header{};
 
-        instanceController.getHeader(instancesFrame, header);
+        instanceController.getHeader(instancesFrame, &header);
 
         u32 instanceIndex = header.count;
 
@@ -231,8 +234,8 @@ public:
         header.count++;
 
         instance.propertyOffset = instanceIndex;
-        entriesDirectory.set(instanceIndex, instance);
-        instanceController.setHeader(instancesFrame, header);
+        instanceController.set(instancesFrame, instanceIndex, &instance);
+        instanceController.setHeader(instancesFrame, &header);
         return classify(instanceIndex, classId);
     }
 
@@ -241,24 +244,24 @@ public:
         Frame *propertyFrame = getPropertyFrame(classId, propertyId);
 
         PropertyEntry propertyEntry;
-        propertyController.get(propertyFrame, propertyId, propertyEntry);
+        propertyController.get(propertyFrame, propertyId, &propertyEntry);
         propertyFrame->close();
 
         return propertyEntry;
     }
 
-    void applyPropertyValue(u64 instanceId, const std::string& propertyName, u64& value, u8 operation){
+    void applyPropertyValue(u64 instanceId, const std::string& propertyName, void* value, u8 operation){
         u32 propertyId = findName(propertyName);
         PropertyEntry propertyEntry = getPropertyEntry(instanceId, propertyId);
-        u32 offset = instanceId & 0xffffffff;
         Frame *propertyValueRootFrame = allocator->fetch(propertyEntry.valueRootPage);
         PageDirectory pageDirectory(allocator, propertyValueRootFrame); //prop values
         SlotController controller(0, propertyEntry.byteWidth);
+        u32 offset = instanceId & 0xffffffff;
         controller.apply(&pageDirectory, offset, value, operation);
         propertyValueRootFrame->close();
     }
 
-    void setPropertyValue(u64 instanceId, const std::string& propertyName, u64 value){
+    void setPropertyValue(u64 instanceId, const std::string& propertyName, void* value){
         applyPropertyValue(instanceId, propertyName, value, SET);
     }
 
@@ -266,18 +269,16 @@ public:
         return classify(((u64) findName(className)) << 32, instanceId);
     }
 
-    u64 classify(u32 instanceId, u32 classId){
+    static u64 classify(u32 instanceId, u32 classId){
         return classId | (instanceId & 0xffffffff);
     }
 
-    u64 getPropertyValue( u32 instanceId, const std::string& className, const std::string& propertyName){
-        return getPropertyValue(classify(instanceId, className), propertyName);
+    void getPropertyValue( u32 instanceId, const std::string& className, const std::string& propertyName, void* value){
+        getPropertyValue(classify(instanceId, className), propertyName, value);
     }
 
-    u64 getPropertyValue( u64 instanceId, const std::string& propertyName){
-        u64 value = 0;
+    void getPropertyValue( u64 instanceId, const std::string& propertyName, void* value){
         applyPropertyValue(instanceId, propertyName, value, GET);
-        return value;
     }
 
     u32 getSize(){
@@ -298,13 +299,14 @@ int main () {
         db->createProperty("User", "amount", 4);
     }
 
+
+    PropertyEntry propertyEntry = db->getProperty("User", "amount");
+/*
+ *
     bool test = true;
     if(test && !db->exists("haha")){
         db->createProperty("User", "haha", 32);
     }
-
-    PropertyEntry propertyEntry = db->getProperty("User", "amount");
-
     u64 instance = db->createInstance("User");
 
     db->setPropertyValue(instance, "amount", 777);
@@ -321,10 +323,33 @@ int main () {
     if(test){
         u64 value2 = db->getPropertyValue(instanceClassified, "haha");
         std::cout << "value2:" << value2 << std::endl;
+    }*/
+
+
+    std::default_random_engine dev(0);
+    std::uniform_int_distribution<int> dist(0, 255);
+    u64 startInstance = db->createInstance("User");
+    u64 instance = startInstance;
+    int size = 400;
+    for(int i = 0 ; i < size ; i++){
+        u32 number = dist(dev);
+        db->setPropertyValue(instance, "amount", &number);
+        instance = db->createInstance("User");
+    }
+
+    dev.seed(0);
+
+    for(int i = 0 ; i < size ; i++){
+        u32 number = dist(dev);
+
+        u64 instanceClassified = db->classify(i + startInstance, "User");
+        u32 value = 0;
+        db->getPropertyValue(instanceClassified, "amount", &value);
+        std::cout << "offset:" << number << " "  << value << std::endl;
+        assert(value == number, "Test fehler at index:" + std::to_string(i));
     }
 
     std::cout << "offset:" << instance << std::endl;
-    std::cout << "value:" << value << std::endl;
     std::cout << propertyEntry.byteWidth << std::endl;
 
     std::cout << "Page count:" << db->getPageCount() << std::endl;

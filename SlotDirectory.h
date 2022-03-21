@@ -125,41 +125,36 @@ public:
         return pageDirectory->fetchFrame(getPageId(index), create);
     }
 
-    template<class H>
-    void setHeader(Frame* frame, H& value){
+    void setHeader(Frame* frame, void* value){
         return_if_null(frame);
-        std::memcpy(frame->getData(), &value, headerSize );
+        std::memcpy(frame->getData(), value, headerSize );
         frame->close();
     }
 
-    template<class H>
-    bool getHeader(Frame *frame, H& value){
+    bool getHeader(Frame *frame, void* value){
         if(frame == nullptr){
             return false;
         }
 
-        std::memcpy(&value, frame->getData(), headerSize );
+        std::memcpy(value, frame->getData(), headerSize );
         frame->close();
         return true;
     }
 
-    template<class T>
-    void set(Frame* frame, u32 index, T& value){
+    void set(Frame* frame, u32 index, void* value){
         return_if_null(frame);
         u32 offset = getPageOffset(index);
-        std::memcpy(frame->getData() + offset, &value, entrySize);
+        std::memcpy(frame->getData() + offset, value, entrySize);
         frame->flush();
     }
 
-    template<class T>
-    void set(PageDirectory *pageDirectory, u32 index, T& value){
+    void set(PageDirectory *pageDirectory, u32 index, void* value){
         Frame *frame = fetchFrame(pageDirectory, getPageId(index), true);
         set(frame, index, value);
         frame->close();
     }
 
-    template<class T>
-    void apply(PageDirectory *pageDirectory, u32 index, T& value, u8 operation){
+    void apply(PageDirectory *pageDirectory, u32 index, void* value, u8 operation){
         Frame *frame = fetchFrame(pageDirectory, getPageId(index), true);
 
         if(operation == GET){
@@ -173,23 +168,30 @@ public:
         frame->close();
     }
 
-    template<class T>
-    bool get(PageDirectory *pageDirectory, u32 index, T& value){
+    bool get(PageDirectory *pageDirectory, u32 index, void* value){
         Frame *frame = fetchFrame(pageDirectory, getPageId(index), false);
         bool success = get(frame, index, value);
         frame->close();
         return success;
     }
 
-    template<class T>
-    bool get(Frame *frame, u32 index, T& value){
+    bool get(Frame *frame, u32 index, void* value){
         if(frame == nullptr){
             return false;
         }
         u32 offset = getPageOffset(index);
-        std::memcpy(&value, frame->getData() + offset, entrySize);
+        std::memcpy(value, frame->getData() + offset, entrySize);
         frame->close();
         return true;
+    }
+
+    template<class T>
+    T* map(Frame *frame, u32 index){
+        if(frame == nullptr){
+            return nullptr;
+        }
+        u32 offset = getPageOffset(index);
+        return (T*)(frame->getData() + offset);
     }
 };
 
