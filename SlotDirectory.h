@@ -128,7 +128,6 @@ public:
     void setHeader(Frame* frame, void* value){
         return_if_null(frame);
         std::memcpy(frame->getData(), value, headerSize );
-        frame->close();
     }
 
     bool getHeader(Frame *frame, void* value){
@@ -137,7 +136,6 @@ public:
         }
 
         std::memcpy(value, frame->getData(), headerSize );
-        frame->close();
         return true;
     }
 
@@ -149,13 +147,13 @@ public:
     }
 
     void set(PageDirectory *pageDirectory, u32 index, void* value){
-        Frame *frame = fetchFrame(pageDirectory, getPageId(index), true);
+        Frame *frame = fetchFrame(pageDirectory, index, true);
         set(frame, index, value);
         frame->close();
     }
 
     void apply(PageDirectory *pageDirectory, u32 index, void* value, u8 operation){
-        Frame *frame = fetchFrame(pageDirectory, getPageId(index), true);
+        Frame *frame = fetchFrame(pageDirectory, index, true);
 
         if(operation == GET){
             get(frame, index, value);
@@ -169,7 +167,7 @@ public:
     }
 
     bool get(PageDirectory *pageDirectory, u32 index, void* value){
-        Frame *frame = fetchFrame(pageDirectory, getPageId(index), false);
+        Frame *frame = fetchFrame(pageDirectory, index, false);
         bool success = get(frame, index, value);
         frame->close();
         return success;
@@ -181,7 +179,6 @@ public:
         }
         u32 offset = getPageOffset(index);
         std::memcpy(value, frame->getData() + offset, entrySize);
-        frame->close();
         return true;
     }
 

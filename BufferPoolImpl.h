@@ -78,6 +78,9 @@ public:
     }
 
     void close(Frame *frame) override{
+
+        if(!(frame->refs > 0)) throw new Exception( "There are no refs!!");
+        //assert(frame->refs > 0, "There are no refs!!");
         frame->refs--;
     }
 };

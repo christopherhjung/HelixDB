@@ -49,8 +49,8 @@ public:
     }
 
     Frame *fetchFrame(u32 key, bool create = false){
-        u32 level1 = (key >> 12) & 0x3ff;
-        assert((level1 & 0x3ff) == 0, "Page number too large")
+        u32 level1 = (key >> 10) & 0x3ff;
+        assert((level1 & ~0x3ff) == 0, "Page number too large")
         auto *level2Frame = (PageDirectoryFrame*)getOrCreate(level1, rootFrame, create);
         assert(level2Frame != nullptr, "Nothing found for key: " + std::to_string(key));
         u32 level2 = key & 0x3ff;
@@ -61,7 +61,7 @@ public:
 
     template<class T>
     void set(u32 key, T value){
-        auto *frame = fetchFrame(key >> 12, true);
+        auto *frame = fetchFrame(key >> 10, true);
         return_if_null(frame);
         u32 level3 = key & 0xfff;
 

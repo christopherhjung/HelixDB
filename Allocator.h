@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <unordered_map>
 #include "DiskManager.h"
 #include "Frame.h"
 #include "MainFrame.h"
@@ -17,7 +18,11 @@ class Allocator : BufferPool{
     u32 poolSize;
     u32 current = 0;
 
+
 public:
+    //static std::string reason;
+
+
     Allocator(BufferPool *bufferPool, MainFrame* mainFrame) : bufferPool(bufferPool), mainFrame(mainFrame){
 
     }
@@ -28,9 +33,14 @@ public:
         if(next != 0){
             page = next;
             Frame* frame = bufferPool->fetch(next);
-            mainFrame->setNextFreePage(frame->getU32(0));
+            //u32 nextFramePageId = 0;
+            //frame->get(0, &nextFramePageId);
+
+            u32* nextPageId = frame->map<u32>();
+            mainFrame->setNextFreePage(*nextPageId);
             frame->close();
         }else{
+            //std::cout << reason << std::endl;
             page = mainFrame->getPageCount();
             mainFrame->setPageCount(page + 1);
         }
@@ -52,9 +62,11 @@ public:
     Frame *fetch(u32 pageIndex, bool pinned = false) override{
         return bufferPool->fetch(pageIndex, pinned);
     }
+
     void flush(Frame *frame) override{
         bufferPool->flush(frame);
     }
+
     void refresh(Frame *frame) override{
         bufferPool->refresh(frame);
     }
