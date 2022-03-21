@@ -308,6 +308,9 @@ public:
     }
 };
 
+int setProp = 0;
+int createInstance = 0;
+
 int main () {
 
     DB *db = new DB("test.db");
@@ -315,6 +318,7 @@ int main () {
     if(!db->exists("User")){
         db->createClass("User");
         db->createProperty("User", "amount", 4);
+        db->createProperty("User", "hash", 1);
     }
 
 
@@ -346,27 +350,35 @@ int main () {
 
     std::default_random_engine dev(0);
     std::uniform_int_distribution<int> dist(1, 99999999);
-    u64 startInstance = db->createInstance("User");
-    u64 instance = startInstance;
+    std::uniform_int_distribution<int> dist2(1, 255);
+
+    debugCounter = &createInstance;
+    u64 startInstance = 0;
+    int size = 100000;
 
     u32 classId = db->findName("User");
     u32 propertyId = db->findName("amount");
-    int size = 10000;
+    u32 hashId = db->findName("hash");
     for(int i = 0 ; i < size ; i++){
         u32 number = dist(dev);
 
+        u64 instance = db->createInstance(classId);
 
-        u32 value = 0;
-        db->getPropertyValue(instance, propertyId, &value);
-
-        if(value != 0){
-            db->getPropertyValue(instance, propertyId, &value);
-            throw new Exception("AlreadyWritten!!");
+        if(i == 0){
+            startInstance = instance;
         }
 
+        debugCounter = &setProp;
         db->setPropertyValue(instance, propertyId, &number);
-        instance = db->createInstance(classId);
+
+        u8 number2 = dist2(dev);
+        db->setPropertyValue(instance, hashId, &number2);
+
+        debugCounter = &createInstance;
     }
+
+    std::cout << "setProp:" << setProp << std::endl;
+    std::cout << "createInstance:" << createInstance << std::endl;
 
     dev.seed(0);
 
@@ -376,11 +388,18 @@ int main () {
         u64 instanceClassified = db->classify(i + startInstance, "User");
         u32 value = 0;
         db->getPropertyValue(instanceClassified, "amount", &value);
-        //std::cout << "offset:" << number << " "  << value << std::endl;
-        assert(value == number, "Test fehler at index:" + std::to_string(i));
+        assert(value == number, "Test fehler at index:" + std::to_string(i) + " " + std::to_string(value) + " != " +
+                                 std::to_string(number));
+
+        value = 0;
+        db->getPropertyValue(instanceClassified, "hash", &value);
+
+        u8 number2 = dist2(dev);
+        assert(value == number2, "Test fehler at index:" + std::to_string(i) + " " + std::to_string(value) + " != " +
+                std::to_string(number2));
     }
 
-    std::cout << "offset:" << instance << std::endl;
+    std::cout << "offset:" << startInstance + size << std::endl;
     std::cout << propertyEntry.byteWidth << std::endl;
 
     std::cout << "Page count:" << db->getPageCount() << std::endl;

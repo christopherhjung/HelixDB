@@ -11,6 +11,8 @@
 #include "defs.h"
 #include "BufferPoolImpl.h"
 
+static int counter;
+static int *debugCounter = &counter;
 
 class Allocator : BufferPool{
     BufferPool *bufferPool;
@@ -20,7 +22,6 @@ class Allocator : BufferPool{
 
 
 public:
-    //static std::string reason;
 
 
     Allocator(BufferPool *bufferPool, MainFrame* mainFrame) : bufferPool(bufferPool), mainFrame(mainFrame){
@@ -40,7 +41,7 @@ public:
             mainFrame->setNextFreePage(*nextPageId);
             frame->close();
         }else{
-            //std::cout << reason << std::endl;
+            (*debugCounter)++;
             page = mainFrame->getPageCount();
             mainFrame->setPageCount(page + 1);
         }

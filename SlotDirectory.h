@@ -88,7 +88,6 @@ public:
     }
 };
 
-#define PAGE_BYTE_SIZE (PAGE_SIZE >> 3)
 
 class SlotController{
     u32 entrySize = 0;
@@ -97,15 +96,13 @@ class SlotController{
 public:
     template<class H, class C>
     SlotController( ) : SlotController(sizeof(H), sizeof(C)){
-        entriesPerPage = round_down(PAGE_BYTE_SIZE - headerSize, entrySize);
     }
     template<class C>
     SlotController( ) : SlotController(0, sizeof(C)){
-        entriesPerPage = round_down(PAGE_BYTE_SIZE - headerSize, entrySize);
     }
 
     SlotController( u32 headerSize, u32 entrySize) : headerSize(headerSize), entrySize(entrySize){
-        entriesPerPage = round_down(PAGE_BYTE_SIZE - headerSize, entrySize);
+        entriesPerPage = ( PAGE_SIZE - headerSize ) / entrySize;
     }
 
     u32 getPageId(u32 index){
