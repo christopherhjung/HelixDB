@@ -34,6 +34,7 @@ public:
     void close(bool dirty = true);
     void open();
     void clear();
+    void setDirty(bool dirty = true);
 
     MainFrame* asMainFrame(){
         return (MainFrame*)(this);

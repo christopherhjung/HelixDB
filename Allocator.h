@@ -48,8 +48,8 @@ public:
 
         Frame* newPageFrame = bufferPool->fetch(page);
         newPageFrame->clear();
-        newPageFrame->flush();
-        mainFrame->flush();
+        newPageFrame->setDirty();
+        mainFrame->setDirty();
         return newPageFrame;
     }
 

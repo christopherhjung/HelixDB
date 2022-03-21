@@ -33,7 +33,7 @@ class PageDirectory{
                 entry->present = true;
                 level2Frame = allocator->allocPage();
                 entry->pageId = level2Frame->getPageId();
-                frame->flush();
+                frame->setDirty();
             }else{
                 level2Frame = allocator->fetch(entry->pageId);
             }

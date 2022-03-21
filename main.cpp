@@ -330,7 +330,7 @@ void test(DB *db){
 
     debugCounter = &createInstance;
     u64 startInstance = 0;
-    int size = 1000000;
+    int size = 30000000;
 
     auto start = high_resolution_clock::now();
 

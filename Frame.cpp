@@ -16,9 +16,8 @@ void Frame::close(bool dirty){
         }
     }else */
     if(dirty){
-        this->dirty = true;
+        setDirty(true);
     }
-
     pool->close(this);
 }
 
@@ -28,5 +27,9 @@ void Frame::clear(){
 
 void Frame::open(){
     pool->open(this);
+}
+
+void Frame::setDirty(bool dirty){
+    this->dirty = dirty;
 }
 

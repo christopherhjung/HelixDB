@@ -43,7 +43,6 @@ public:
     void setHeader(Frame* frame, H& value){
         return_if_null(frame);
         *((H*)frame->getData()) = value;
-        frame->flush();
         frame->close();
     }
 
@@ -62,7 +61,6 @@ public:
         return_if_null(frame);
         u32 offset = getPageOffset(index);
         *((T*)(frame->getData() + offset)) = value;
-        frame->flush();
         frame->close();
     }
 
@@ -140,7 +138,7 @@ public:
         return_if_null(frame);
         u32 offset = getPageOffset(index);
         std::memcpy(frame->getData() + offset, value, entrySize);
-        frame->flush();
+        frame->setDirty();
     }
 
     void set(PageDirectory *pageDirectory, u32 index, void* value){
