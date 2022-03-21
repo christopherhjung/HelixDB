@@ -3,7 +3,7 @@
 //
 
 #pragma once
-
+#include "list.h"
 #include "defs.h"
 class BufferPoolImpl;
 class MainFrame;
@@ -13,10 +13,15 @@ class Frame{
     friend BufferPoolImpl;
 
     u32 refs;
-    bool clean;
+    bool active;
     u32 frameIndex;
     u32 pageId;
     bool dirty;
+    bool accessed;
+
+    //list_elem elem;
+
+    //Frame* next;
 protected:
     i8 buffer[PAGE_SIZE];
     BufferPoolImpl *pool;

@@ -80,11 +80,8 @@ class DB{
     u32 currentValue = 0;
 public:
     DB(const std::string& fileName){
-        setvbuf(stdout, nullptr, _IONBF, 0);
-        setvbuf(stderr, nullptr, _IONBF, 0);
-
         diskManager = new DiskManager(fileName);
-        bufferPool = new BufferPoolImpl(diskManager, 16);
+        bufferPool = new BufferPoolImpl(diskManager, 32);
         u32 size = diskManager->getSize();
         init = size == 0;
         Frame* frame = bufferPool->fetch(0);
@@ -333,7 +330,7 @@ void test(DB *db){
 
     debugCounter = &createInstance;
     u64 startInstance = 0;
-    int size = 100000;
+    int size = 1000000;
 
     auto start = high_resolution_clock::now();
 
@@ -401,18 +398,22 @@ void create(DB *db){
     }
 }
 
+void fetch(DB *db, u32 index){
+    u32 value = 0;
+    u64 instance = DB::classify(index, db->findName("User"));
+    db->getPropertyValue(instance, "amount", &value);
+
+    std::cout << "Value:" << value << std::endl;
+}
+
 int main () {
     auto start = high_resolution_clock::now();
     DB *db = new DB("test.db");
 
-    //create(db);
-    //test(db);
+    create(db);
+    test(db);
 
-    u32 value = 0;
-    u64 instance = DB::classify(98332, db->findName("User"));
-    db->getPropertyValue(instance, "amount", &value);
-
-    std::cout << "Value:" << value << std::endl;
+    //fetch(db, 10000000);
 
     db->shutdown();
 

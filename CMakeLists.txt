@@ -10,4 +10,5 @@ add_executable(HelixDB
         ClassCollectionHeader.cpp
         Frame.cpp
         DiskManager.cpp
-        BufferPool.cpp)
+        BufferPool.cpp
+        list.cpp)

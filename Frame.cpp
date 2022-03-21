@@ -10,11 +10,12 @@ void Frame::flush(){
 }
 
 void Frame::close(bool dirty){
-    if(refs == 1){
+    /*if(refs == 1){
         if(dirty || this->dirty){
             flush();
         }
-    }else if(dirty){
+    }else */
+    if(dirty){
         this->dirty = true;
     }
 

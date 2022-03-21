@@ -4,12 +4,14 @@
 
 #pragma once
 
+#include <list>
+
 #include "DiskManager.h"
 #include "Frame.h"
+#include "list.h"
 #include "defs.h"
 
 static i8 zeros[PAGE_SIZE]{0};
-#define BUFFER_SIZE 16
 
 class BufferPool{
 public:
@@ -27,7 +29,6 @@ class BufferPoolImpl : public BufferPool{
     u32 poolSize;
     u32 current = 0;
 
-
     void load(Frame* frame){
         diskManager->read(frame->pageId, frame->buffer);
     }
@@ -35,6 +36,7 @@ public:
     BufferPoolImpl(DiskManager *diskManager, u32 poolSize) : diskManager(diskManager), poolSize(poolSize), buffer(new Frame[poolSize]){
         foreach(i, poolSize){
             buffer[i].pool = this;
+            buffer[i].frameIndex = i;
         }
     }
 
@@ -43,7 +45,14 @@ public:
     }
 
     void shutdown(){
-        foreach(i, BUFFER_SIZE){
+        foreach(i, poolSize){
+            Frame *frame = getFrame(i);
+            if(frame->dirty){
+                flush(frame);
+            }
+        }
+
+        foreach(i, poolSize){
             Frame *frame = getFrame(i);
             check(frame->refs == 0, "Refs are not 0");
         }
@@ -53,27 +62,37 @@ public:
         return &buffer[frameIndex];
     }
 
-    Frame *fetch(u32 pageIndex, bool pinned = false) override{
-        foreach(i, BUFFER_SIZE){
+    void prepareFrame(Frame* frame, u32 pageId){
+        if(frame->dirty){
+            flush(frame);
+            frame->dirty = false;
+        }
+        frame->pageId = pageId;
+        frame->active = true;
+        frame->refs++;
+        load(frame);
+    }
+
+    Frame *fetch(u32 pageId, bool pinned = false) override{
+        foreach(i, poolSize){
             Frame *frame = getFrame(i);
-            if(frame->clean && frame->pageId == pageIndex){
+            if(frame->active && frame->pageId == pageId){
                 frame->refs++;
                 return frame;
             }
         }
 
-        foreach(i, BUFFER_SIZE){
+        foreach(i, poolSize * 2){
             Frame *frame = getFrame(current);
-            if(frame->refs == 0){
-                frame->refs++;
-                frame->clean = true;
-                frame->frameIndex = current;
-                frame->pageId = pageIndex;
-                load(frame);
-                return frame;
-            }
-
             current = (current + 1) % poolSize;
+            if(frame->refs == 0){
+                if(frame->accessed){
+                    frame->accessed = false;
+                }else{
+                    prepareFrame(frame, pageId );
+                    return frame;
+                }
+            }
         }
 
         error("No Frames left");
@@ -92,9 +111,8 @@ public:
     }
 
     void close(Frame *frame) override{
-
-        if(!(frame->refs > 0)) throw new Exception( "There are no refs!!");
-        //assert(frame->refs > 0, "There are no refs!!");
+        check(frame->refs > 0, "There are no refs!!");
+        frame->accessed = true;
         frame->refs--;
     }
 };
