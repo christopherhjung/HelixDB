@@ -59,7 +59,6 @@ struct KeyValue{
     }
 };
 
-
 class DB{
     bool init;
     DiskManager* diskManager;
@@ -145,14 +144,21 @@ public:
     }
 
     u32 createClass(const std::string& name){
-        u32 classIndex = classCount++;
+        u32 classIndex = createClass();
+        addName(name, classIndex);
+        return classIndex;
+    }
+
+    u32 createClass(){
+        u32 classIndex = mainFrame->getClassCount();
+        mainFrame->setClassCount(classIndex);
         Frame* frame = classDirectory->fetchFrame(classIndex, true);
         auto *classEntry = frame->map<ClassEntry>() + classIndex;
         classEntry->entriesPageId = allocator->allocPageId();
         classEntry->propertiesPageId = allocator->allocPageId();
         classEntry->propertyCount = 0;
-        addName(name, classIndex);
         frame->close();
+        mainFrame->setDirty();
         return classIndex;
     }
 
@@ -272,7 +278,7 @@ public:
         return propertyEntry;
     }
 
-    void applyPropertyValue(u64 instanceId, u32 propertyId, void* value, u8 operation){
+    void applyPropertyValue(u64 instanceId, u32 propertyId, void* value, Op operation){
         PropertyEntry propertyEntry = getPropertyEntry(instanceId, propertyId);
         Frame *propertyValueRootFrame = allocator->fetch(propertyEntry.valueRootPage, false);
         check(propertyValueRootFrame, "ValueFrame not found");
@@ -288,7 +294,7 @@ public:
     }
 
     void setPropertyValue(u64 instanceId, u32 propertyId, void* value){
-        applyPropertyValue(instanceId, propertyId, value, SET);
+        applyPropertyValue(instanceId, propertyId, value, Op::Set);
     }
 
     u64 classify(u32 instanceId, const std::string& className){
@@ -308,7 +314,7 @@ public:
     }
 
     void getPropertyValue( u64 instanceId, u32 propertyId, void* value){
-        applyPropertyValue(instanceId, propertyId, value, GET);
+        applyPropertyValue(instanceId, propertyId, value, Op::Get);
     }
 
     u32 getSize(){

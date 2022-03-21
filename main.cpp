@@ -8,6 +8,11 @@
 #include "defs.h"
 #include "DB.h"
 
+#include "antlr4-runtime.h"
+#include "TLexer.h"
+#include "TParser.h"
+#include "TParserVisitor.h"
+
 using namespace std::chrono;
 
 
@@ -97,17 +102,92 @@ void fetch(DB *db, u32 index){
     std::cout << "Value:" << value << std::endl;
 }
 
+
+using namespace antlrcpptest;
+
+void runStatement(TParser::StatementContext *statement, DB* db){
+    if(TParser::InsertContext *insertContext = statement->insert()){
+        TParser::ClassDefinitionContext *classDefinitionContext = insertContext->type;
+
+        std::string className = classDefinitionContext->getText();
+        std::vector<TParser::PairContext*> pairs = insertContext->pair();
+
+
+        i32 classId = db->findName(className, false);
+
+        if(classId == -1){
+            printf("Class %s not found\n", className.c_str());
+            return;
+        }
+
+        u64 instanceId = db->createInstance(classId);
+
+        printf("Instance %lu created from Class %s\n", instanceId, className.c_str());
+
+        for( TParser::PairContext* pair : pairs ){
+            std::string propertyName = pair->name->getText();
+            u32 value = std::stoi(pair->value->getText());
+
+            u32 propertyId = db->findName(propertyName);
+
+            if(propertyId == -1){
+                printf("Property %s of Class %s not found\n", propertyName.c_str(), className.c_str());
+                continue;
+            }
+
+            db->setPropertyValue(instanceId, propertyId, &value);
+
+            printf("Value %d added to Property %s of instance %lu\n", value, propertyName.c_str(), instanceId);
+        }
+    }else if(TParser::SelectContext *selectContext = statement->select()){
+
+    }else if(TParser::CreateClassContext *createClassContext = statement->createClass()){
+        std::string className = createClassContext->name->getText();
+        db->createClass(className);
+        printf("Created Class %s\n", className.c_str());
+    }else if(TParser::CreatePropertyContext *createProperty = statement->createProperty()){
+        std::string propertyName = createProperty->name->getText();
+        std::string className = createProperty->type->getText();
+
+        db->createProperty(className, propertyName, 4);
+        printf("Created Property %s.%s\n", className.c_str(), propertyName.c_str());
+    }
+}
+
 int main () {
     auto start = high_resolution_clock::now();
     DB *db = new DB("test.db");
 
     create(db);
-    test(db);
+    //test(db);
 
     //fetch(db, 100000021);
 
-    db->shutdown();
+   // std::ifstream file("code.kb");
 
+
+    std::string line;
+
+    while(true){
+        std::getline(std::cin, line);
+
+        if(line == "exit"){
+            break;
+        }
+
+        antlr4::ANTLRInputStream input(line);
+        TLexer lexer(&input);
+        antlr4::CommonTokenStream tokens(&lexer);
+        TParser parser(&tokens);
+
+        TParser::MainContext *main = parser.main();
+
+        if(main->EOF() != nullptr){
+            runStatement(main->statement(), db);
+        }
+    }
+
+    db->shutdown();
 
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);

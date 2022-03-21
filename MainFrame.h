@@ -10,6 +10,7 @@
 #define NEXT_FREE_PAGE_OFFSET 4
 #define CLASS_PAGE_OFFSET 8
 #define NAME_PAGE_OFFSET 12
+#define CLASS_COUNT_OFFSET 16
 
 class MainFrame : public Frame{
 public:
@@ -18,6 +19,8 @@ public:
     Frame* getClassRootFrame();
     void setClassPage(u32 pageId);
     u32 getPageCount();
+    void setClassCount(u32 classCount);
+    u32 getClassCount();
     void setPageCount(u32 pageSize);
     u32 getNextFreePage();
     void setNextFreePage(u32 pageId);

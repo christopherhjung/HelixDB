@@ -21,11 +21,11 @@ void MainFrame::setClassPage(u32 pageId)
 }
 
 Frame* MainFrame::getClassRootFrame(){
-    return pool->fetch(getU32(CLASS_PAGE_OFFSET));
+    return pool->fetch(get<u32>(CLASS_PAGE_OFFSET));
 }
 
 u32 MainFrame::getPageCount(){
-    return getU32(PAGE_COUNT_OFFSET);
+    return get<u32>(PAGE_COUNT_OFFSET);
 }
 
 void MainFrame::setPageCount(u32 pageSize)
@@ -39,6 +39,14 @@ u32 MainFrame::getNextFreePage(){
 
 void MainFrame::setNextFreePage(u32 pageId){
     set(NEXT_FREE_PAGE_OFFSET, pageId);
+}
+
+u32 MainFrame::getClassCount(){
+    return get<u32>(CLASS_COUNT_OFFSET);
+}
+
+void MainFrame::setClassCount(u32 pageId){
+    set(CLASS_COUNT_OFFSET, pageId);
 }
 
 void MainFrame::init(){

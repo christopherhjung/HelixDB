@@ -9,9 +9,6 @@ typedef int i32;
 typedef char i8;
 typedef unsigned char u8;
 
-#define SET 1
-#define GET 2
-
 #define foreach(i, size) for(u32 i = 0 ; i < (size) ; i++)
 
 #define round_down(X, STEP) ((X) / (STEP) * (STEP))

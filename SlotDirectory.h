@@ -8,83 +8,13 @@
 #include "Frame.h"
 #include "defs.h"
 
-class FrameFragment{
 
+
+enum Op{
+    Set, Get
 };
 
-class SlotDirectory{
-    PageDirectory pageDirectory;
-    u32 entrySize = 0;
-    u32 headerSize = 0;
-    u32 entriesPerPage = 0;
 
-    u32 getPageId(u32 index){
-        return index / entriesPerPage;
-    }
-
-    u32 getPageSlot(u32 index){
-        return index % entriesPerPage;
-    }
-
-    u32 getPageOffset(u32 index){
-        return headerSize + getPageSlot(index) * entrySize;
-    }
-public:
-    SlotDirectory(Allocator *allocator, Frame *frame, u32 headerSize, u32 entrySize) :
-        pageDirectory(allocator, frame), headerSize(headerSize), entrySize(entrySize){
-        entriesPerPage = round_down(PAGE_SIZE - headerSize, entrySize);
-    }
-
-    Frame *fetchFrame(u32 index){
-        return pageDirectory.fetchFrame(getPageId(index), true);
-    }
-
-    template<class H>
-    void setHeader(Frame* frame, H& value){
-        return_if_null(frame);
-        *((H*)frame->getData()) = value;
-        frame->close();
-    }
-
-    template<class H>
-    bool getHeader(Frame *frame, H& value){
-        if(frame == nullptr){
-            return false;
-        }
-        value = *((H*)frame->getData());
-        frame->close();
-        return true;
-    }
-
-    template<class T>
-    void set(Frame* frame, u32 index, T& value){
-        return_if_null(frame);
-        u32 offset = getPageOffset(index);
-        *((T*)(frame->getData() + offset)) = value;
-        frame->close();
-    }
-
-    template<class T>
-    void set(u32 index, T& value){
-        set(pageDirectory.fetchFrame(getPageId(index), true), index, value);
-    }
-
-    template<class T>
-    bool get(u32 index, T& value){
-        return get(pageDirectory.fetchFrame(getPageId(index), false), index, value);
-    }
-
-    template<class T>
-    bool get(Frame *frame, u32 index, T& value){
-        if(frame == nullptr){
-            return false;
-        }
-        u32 offset = getPageOffset(index);
-        value = *((T*)(frame->getData() + offset));
-        frame->close();
-        return true;
-    }
-};
 
 
 class SlotController{
@@ -147,12 +77,12 @@ public:
         frame->close();
     }
 
-    void apply(PageDirectory *pageDirectory, u32 index, void* value, u8 operation){
+    void apply(PageDirectory *pageDirectory, u32 index, void* value, Op operation){
         Frame *frame = fetchFrame(pageDirectory, index, true);
 
-        if(operation == GET){
+        if(operation == Op::Get){
             get(frame, index, value);
-        }else if(operation == SET){
+        }else if(operation == Op::Set){
             set(frame, index, value);
         }else{
             error("no set or get");
@@ -187,64 +117,3 @@ public:
     }
 };
 
-
-/*
-template<class T>
-class SlotController {
-    GenericSlotController controller;
-
-    SlotController(u32 header) : controller(header, sizeof(T)) {
-
-    }
-public:
-
-    SlotController() : controller(0, sizeof(T)) {
-
-    }
-
-    Frame *fetchFrame(PageDirectory *directory, u32 index){
-        return directory->fetchFrame(controller.getPageId(index), true);
-    }
-
-    void set(Frame *frame, u32 index, T &value) {
-        return_if_null(frame);
-        u32 slot = controller.getPageSlot(index);
-        ((T *) frame->getData())[slot] = value;
-        frame->flush();
-        frame->close();
-    }
-
-    bool get(Frame *frame, u32 index, T &value) {
-        if (frame == nullptr) {
-            return false;
-        }
-        u32 slot = controller.getPageOffset(index);
-        value = ((T *) frame->getData())[slot];
-        frame->close();
-        return true;
-    };
-};
-
-template<class H, class T>
-class HeaderSlotController : public SlotController<T>{
-
-    HeaderSlotController() : HeaderSlotController(sizeof(H)){
-
-    }
-
-    void setHeader(Frame *frame, H &value) {
-        return_if_null(frame);
-        *((H *) frame->getData()) = value;
-        frame->flush();
-        frame->close();
-    }
-
-    bool getHeader(Frame *frame, H &value) {
-        if (frame == nullptr) {
-            return false;
-        }
-        value = *((H *) frame->getData());
-        frame->close();
-        return true;
-    }
-};*/
