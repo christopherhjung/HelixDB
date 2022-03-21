@@ -3,7 +3,7 @@
 //
 
 #include "Frame.h"
-#include "BufferPoolImpl.h"
+#include "BufferPool.h"
 
 void Frame::flush(){
     pool->flush(this);

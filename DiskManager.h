@@ -16,16 +16,14 @@
 
 class DiskManager{
     std::fstream file;
-    std::mutex filelatch_;
-    u32 pageSize = 10;
-    i8 mainPageBuffer[PAGE_SIZE];
+    std::mutex fileLatch;
     const std::string dbName;
 public:
     DiskManager(const std::string& dbName) : dbName(dbName){
         file.open(dbName, std::ios::in | std::ios::out | std::ios::binary);
-        read(0, mainPageBuffer);
+        //file.rdbuf()->pubsetbuf(nullptr, 0);
 
-        std::scoped_lock fileMutex(filelatch_);
+        std::scoped_lock fileMutex(fileLatch);
         file.open(dbName, std::ios::binary | std::ios::in | std::ios::out);
         if (!file.is_open()) {
             file.clear();
@@ -44,17 +42,17 @@ public:
         return rc == 0 ? static_cast<u32>(stat_buf.st_size) : -1;
     }
 
-    void write(u32 pageIndex, i8* test, u32 size = PAGE_SIZE){
+    void write(u32 pageIndex, i8* data, u32 size = PAGE_SIZE){
         file.clear();
         file.seekg(pageIndex * PAGE_SIZE);
-        file.write(test, size);
+        file.write(data, size);
         file.flush();
     }
 
-    void read(u32 pageIndex, i8* test, u32 size = PAGE_SIZE){
+    void read(u32 pageIndex, i8* data, u32 size = PAGE_SIZE){
         file.clear();
         file.seekg(pageIndex * PAGE_SIZE);
-        file.read(test, size);
+        file.read(data, size);
     }
 
     void close(){

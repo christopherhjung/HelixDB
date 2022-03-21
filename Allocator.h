@@ -9,7 +9,7 @@
 #include "Frame.h"
 #include "MainFrame.h"
 #include "defs.h"
-#include "BufferPoolImpl.h"
+#include "BufferPool.h"
 
 static int counter;
 static int *debugCounter = &counter;

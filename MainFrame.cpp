@@ -4,7 +4,7 @@
 
 #include "MainFrame.h"
 #include "Frame.h"
-#include "BufferPoolImpl.h"
+#include "BufferPool.h"
 
 void MainFrame::setNamePage(u32 pageId)
 {

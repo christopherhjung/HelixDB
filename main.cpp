@@ -16,7 +16,7 @@
 #include <thread>  // NOLINT
 #include <chrono>
 #include "DiskManager.h"
-#include "BufferPoolImpl.h"
+#include "BufferPool.h"
 #include "MainFrame.h"
 #include "Allocator.h"
 #include "PageDirectory.h"
@@ -330,7 +330,7 @@ void test(DB *db){
 
     debugCounter = &createInstance;
     u64 startInstance = 0;
-    int size = 30000000;
+    int size = 10000000;
 
     auto start = high_resolution_clock::now();
 
@@ -413,7 +413,7 @@ int main () {
     create(db);
     test(db);
 
-    //fetch(db, 10000000);
+    //fetch(db, 100000021);
 
     db->shutdown();
 
