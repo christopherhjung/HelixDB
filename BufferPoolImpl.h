@@ -9,6 +9,7 @@
 #include "defs.h"
 
 static i8 zeros[PAGE_SIZE]{0};
+#define BUFFER_SIZE 16
 
 class BufferPool{
 public:
@@ -16,6 +17,8 @@ public:
     virtual void flush(Frame *frame) = 0;
     virtual void refresh(Frame *frame) = 0;
     virtual void close(Frame *frame) = 0;
+    virtual void open(Frame *frame) = 0;
+    virtual void shutdown() = 0;
 };
 
 class BufferPoolImpl : public BufferPool{
@@ -39,12 +42,19 @@ public:
         delete[] buffer;
     }
 
+    void shutdown(){
+        foreach(i, BUFFER_SIZE){
+            Frame *frame = getFrame(i);
+            check(frame->refs == 0, "Refs are not 0");
+        }
+    }
+
     Frame* getFrame(u32 frameIndex){
         return &buffer[frameIndex];
     }
 
     Frame *fetch(u32 pageIndex, bool pinned = false) override{
-        for( u32 i = 0 ; i < PAGE_SIZE ; i++ ){
+        foreach(i, BUFFER_SIZE){
             Frame *frame = getFrame(i);
             if(frame->clean && frame->pageId == pageIndex){
                 frame->refs++;
@@ -52,7 +62,7 @@ public:
             }
         }
 
-        for( u32 i = 0 ; i < PAGE_SIZE ; i++ ){
+        foreach(i, BUFFER_SIZE){
             Frame *frame = getFrame(current);
             if(frame->refs == 0){
                 frame->refs++;
@@ -75,6 +85,10 @@ public:
 
     void refresh(Frame *frame) override{
         load(frame);
+    }
+
+    void open(Frame *frame) override{
+        frame->refs++;
     }
 
     void close(Frame *frame) override{

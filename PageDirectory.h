@@ -45,45 +45,22 @@ class PageDirectory{
 
 public:
     PageDirectory(Allocator *allocator, Frame *frame) : allocator(allocator), rootFrame((PageDirectoryFrame*)frame){
+        rootFrame->open();
+    }
 
+    ~PageDirectory(){
+        rootFrame->close();
     }
 
     Frame *fetchFrame(u32 key, bool create = false){
         u32 level1 = (key >> 10) & 0x3ff;
-        assert((level1 & ~0x3ff) == 0, "Page number too large")
+        check((level1 & ~0x3ff) == 0, "Page number too large")
         auto *level2Frame = (PageDirectoryFrame*)getOrCreate(level1, rootFrame, create);
-        assert(level2Frame != nullptr, "Nothing found for key: " + std::to_string(key));
+        check(level2Frame != nullptr, "Nothing found for key: " + std::to_string(key));
         u32 level2 = key & 0x3ff;
         auto *level3Frame = getOrCreate(level2, level2Frame, create);
         level2Frame->close();
         return level3Frame;
-    }
-
-    template<class T>
-    void set(u32 key, T value){
-        auto *frame = fetchFrame(key >> 10, true);
-        return_if_null(frame);
-        u32 level3 = key & 0xfff;
-
-        i8 *addr = frame->getData() + level3;
-        *((T*)addr) = value;
-        frame->flush();
-        frame->close();
-    }
-
-    template<class T>
-    T get(u32 key){
-        auto *frame = fetchFrame(key >> 12, false);
-        if(frame == nullptr){
-            return T(0);
-        }
-        u32 level3 = key & 0xfff;
-
-        i8 *addr = frame->getData() + level3;
-        T value = *((T*)addr);
-        frame->flush();
-        frame->close();
-        return value;
     }
 };
 

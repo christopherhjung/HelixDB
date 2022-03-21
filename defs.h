@@ -20,4 +20,4 @@ typedef unsigned char u8;
 #define return_if_null(ptr) if((ptr) == nullptr) return;
 #define return_null_if(condition) if(condition) return nullptr;
 #define error(message) throw new Exception(message);
-#define assert(condition, message) if(!(condition)) throw new Exception(message);
+#define check(condition, message) if(!(condition)) throw new Exception(message);

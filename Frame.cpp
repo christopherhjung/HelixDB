@@ -20,3 +20,7 @@ void Frame::clear(){
     memset(buffer, 0, PAGE_SIZE);
 }
 
+void Frame::open(){
+    pool->open(this);
+}
+

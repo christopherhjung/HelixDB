@@ -75,4 +75,12 @@ public:
     void close(Frame *frame) override{
         bufferPool->close(frame);
     }
+
+    void open(Frame *frame) override{
+        bufferPool->open(frame);
+    }
+
+    void shutdown() override{
+        bufferPool->shutdown();
+    }
 };

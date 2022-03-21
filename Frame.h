@@ -26,6 +26,7 @@ public:
 
     void flush();
     void close(bool doFlush = true);
+    void open();
     void clear();
 
     MainFrame* asMainFrame(){

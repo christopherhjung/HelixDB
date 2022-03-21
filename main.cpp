@@ -107,6 +107,8 @@ public:
         classCount = classCollectionHeaderFrame->getClassCount();
         Frame *classRootFrame = classCollectionHeaderFrame->getPageDirectoryFrame();
         classDirectory = new PageDirectory(allocator, classRootFrame); //classes
+        classCollectionHeaderFrame->close(false);
+        classRootFrame->close();
     }
 
     bool isInit(){
@@ -116,6 +118,9 @@ public:
     void shutdown(){
         nameFrame->close();
         mainFrame->close();
+        delete classDirectory;
+        bufferPool->shutdown();
+        delete allocator;
     }
 
     void addName(const std::string& name, u32 index){
@@ -173,6 +178,7 @@ public:
 
         Frame *propertiesRootFrame = allocator->fetch(classEntry->propertiesPageId);
         PageDirectory propertiesDirectory(allocator, propertiesRootFrame); //props per class
+        propertiesRootFrame->close();
 
         u32 propertyId = classEntry->propertyCount++;
 
@@ -193,6 +199,7 @@ public:
 
         Frame *propertiesRootFrame = allocator->fetch(classEntry.propertiesPageId);
         PageDirectory propertiesDirectory(allocator, propertiesRootFrame); //props per class
+        propertiesRootFrame->close();
 
         return propertyController.fetchFrame(&propertiesDirectory, propertyId);
     }
@@ -202,12 +209,13 @@ public:
         ClassEntry classEntry = getClass(classId);
 
         Frame *propertiesRootFrame = allocator->fetch(classEntry.propertiesPageId);
-        auto *propertiesDirectory = new PageDirectory(allocator, propertiesRootFrame); //props per class
+        PageDirectory propertiesDirectory(allocator, propertiesRootFrame); //props per class
+        propertiesRootFrame->close();
 
         u32 propertyId = findName(className);
 
         PropertyEntry propertyFrame{};
-        Frame* frame = propertiesDirectory->fetchFrame(propertyId);
+        Frame* frame = propertiesDirectory.fetchFrame(propertyId);
         propertyController.get(frame, propertyId, &propertyFrame);
         frame->close(false);
         return propertyFrame;
@@ -225,6 +233,7 @@ public:
 
         Frame *entriesRootFrame = allocator->fetch(classEntry->entriesPageId);
         PageDirectory entriesDirectory(allocator, entriesRootFrame); //instances
+        entriesRootFrame->close();
 
         u32 instanceIndex = classEntry->entryCount;
         auto *instancesFrame = instanceController.fetchFrame(&entriesDirectory, instanceIndex, true);
@@ -263,12 +272,12 @@ public:
     void applyPropertyValue(u64 instanceId, u32 propertyId, void* value, u8 operation){
         PropertyEntry propertyEntry = getPropertyEntry(instanceId, propertyId);
         Frame *propertyValueRootFrame = allocator->fetch(propertyEntry.valueRootPage, false);
-        assert(propertyValueRootFrame, "ValueFrame not found");
+        check(propertyValueRootFrame, "ValueFrame not found");
         PageDirectory pageDirectory(allocator, propertyValueRootFrame); //prop values
+        propertyValueRootFrame->close();
         SlotController controller(0, propertyEntry.byteWidth);
         u32 offset = instanceId & 0xffffffff;
         controller.apply(&pageDirectory, offset, value, operation);
-        propertyValueRootFrame->close();
     }
 
     void setPropertyValue(u64 instanceId, const std::string& propertyName, void* value){
@@ -354,7 +363,7 @@ int main () {
 
     debugCounter = &createInstance;
     u64 startInstance = 0;
-    int size = 100000;
+    int size = 10000;
 
     u32 classId = db->findName("User");
     u32 propertyId = db->findName("amount");
@@ -388,14 +397,14 @@ int main () {
         u64 instanceClassified = db->classify(i + startInstance, "User");
         u32 value = 0;
         db->getPropertyValue(instanceClassified, "amount", &value);
-        assert(value == number, "Test fehler at index:" + std::to_string(i) + " " + std::to_string(value) + " != " +
+        check(value == number, "Test fehler at index:" + std::to_string(i) + " " + std::to_string(value) + " != " +
                                  std::to_string(number));
 
         value = 0;
         db->getPropertyValue(instanceClassified, "hash", &value);
 
         u8 number2 = dist2(dev);
-        assert(value == number2, "Test fehler at index:" + std::to_string(i) + " " + std::to_string(value) + " != " +
+        check(value == number2, "Test fehler at index:" + std::to_string(i) + " " + std::to_string(value) + " != " +
                 std::to_string(number2));
     }
 
