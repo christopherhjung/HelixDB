@@ -35,7 +35,7 @@ class BufferPoolImpl : public BufferPool{
 public:
     BufferPoolImpl(DiskManager *diskManager, u32 poolSize) : diskManager(diskManager), poolSize(poolSize), buffer(new Frame[poolSize]){
         foreach(i, poolSize){
-            auto frame = buffer[i];
+            auto &frame = buffer[i];
             frame.pool = this;
             frame.frameIndex = i;
         }
