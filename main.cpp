@@ -105,6 +105,116 @@ void fetch(DB *db, u32 index){
 
 using namespace antlrcpptest;
 
+struct Value{
+    u32 data;
+};
+
+Value executePrimaryExpressionContext(TParser::PrimaryExpressionContext *expressionContext, DB* db){
+    if(auto *memberAccess = expressionContext->memberAccess()){
+
+        u32 value;
+        std::string variableName = memberAccess->variable->getText();
+        std::string propertyName = memberAccess->property->getText();
+        //db->getPropertyValue(instance, propertyName, &value);
+
+
+    }
+
+    return {};
+}
+
+Value executeMultiplicativeExpressionContext(TParser::MultiplicativeExpressionContext *expressionContext, DB* db){
+    auto left = executePrimaryExpressionContext(expressionContext->left, db);
+    if(auto *op = expressionContext->op){
+        auto right = executeMultiplicativeExpressionContext(expressionContext->right, db);
+
+        return Value{
+            .data = left.data * right.data
+        };
+    }
+
+    return left;
+}
+
+
+Value executeAdditiveExpression(TParser::AdditiveExpressionContext *expressionContext, DB* db){
+    auto left = executeMultiplicativeExpressionContext(expressionContext->left, db);
+    if(auto *op = expressionContext->op){
+        auto right = executeAdditiveExpression(expressionContext->right, db);
+
+        return Value{
+            .data = left.data + right.data
+        };
+    }
+
+    return left;
+}
+
+
+Value executeComparison(TParser::ComparisonContext *expressionContext, DB* db){
+    auto left = executeAdditiveExpression(expressionContext->left, db);
+    if(auto *op = expressionContext->op){
+        auto right = executeComparison(expressionContext->right, db);
+
+        return Value{
+                .data = left.data > right.data
+        };
+    }
+
+    return left;
+}
+
+Value executeEquality(TParser::EqualityContext *expressionContext, DB* db){
+    auto left = executeComparison(expressionContext->left, db);
+    if(auto *op = expressionContext->op){
+        auto right = executeEquality(expressionContext->right, db);
+
+        return Value{
+                .data = left.data == right.data
+        };
+    }
+
+    return left;
+}
+
+
+Value executeConjunction(TParser::ConjunctionContext *expressionContext, DB* db){
+    auto left = executeEquality(expressionContext->left, db);
+
+    if(expressionContext->right){
+        auto right = executeConjunction(expressionContext->right, db);
+
+        return Value{
+            .data = left.data && right.data
+        };
+    }
+
+    return left;
+}
+
+Value executeDisjunction(TParser::DisjunctionContext *expressionContext, DB* db){
+    auto left = executeConjunction(expressionContext->left, db);
+
+    if(expressionContext->right){
+        auto right = executeDisjunction(expressionContext->right, db);
+
+        return Value{
+            .data = left.data || right.data
+        };
+    }
+
+    return left;
+}
+
+
+Value executeExpression(TParser::ExpressionContext *expressionContext, DB* db){
+    if(auto *disjunction = expressionContext->disjunction()){
+        return executeDisjunction(disjunction, db);
+    }
+
+    error("unknown expression");
+}
+
 void runStatement(TParser::StatementContext *statement, DB* db){
     if(TParser::InsertContext *insertContext = statement->insert()){
         TParser::ClassDefinitionContext *classDefinitionContext = insertContext->type;
@@ -148,14 +258,26 @@ void runStatement(TParser::StatementContext *statement, DB* db){
 
         u64 instance = DB::classify(index, classId);
 
-        TParser::ExprContext *expression = selectContext->expression;
+        TParser::TupleDefinitionContext *tuple =  selectContext->tuple;
+
+        std::string sep = "";
+        for(TParser::ExpressionContext *expression : tuple->expressions){
+            Value value = executeExpression(expression, db);
+            //u32 value;
+            //std::string propertyName = expression->property->getText();
+            //db->getPropertyValue(instance, propertyName, &value);
+
+            printf("%s%d", sep.c_str(), value.data);
+            sep = " | ";
+        }
+
+        //select w.age, w.age from w:Person where 1
+        //select w.age, w.money from w:Person where 1
+        printf("\n");
 
         //expression->variable
-        std::string propertyName = expression->property->getText();
 
-        u32 value;
-        db->getPropertyValue(instance, propertyName, &value);
-        printf("Property value of %s is %d\n", propertyName.c_str(), value);
+
     }else if(TParser::CreateClassContext *createClassContext = statement->createClass()){
         std::string className = createClassContext->name->getText();
         db->createClass(className);

@@ -11,9 +11,37 @@ statement : select | insert | createClass | createProperty;
 
 classDefinition : Identifier;
 
-select : 'select' expression=expr 'from' name=Identifier ':' type=classDefinition 'where' id=Number;
+select : 'select' tuple=tupleDefinition 'from' sources+=source (',' sources+=source)? 'where' expression;
 
-expr: variable=Identifier '.' property=Identifier;
+source : name=Identifier ':' type=classDefinition;
+
+tupleDefinition: expressions+=expression (',' expressions+=expression)*;
+
+expression: disjunction;
+
+disjunction: left=conjunction ('||' right=disjunction)?;
+
+conjunction: left=equality ('&&' right=conjunction)?;
+
+equality: left=comparison (op=equalityOperator right=equality)?;
+
+equalityOperator: '=' | '!=';
+
+comparison: left=additiveExpression (op=comparisonOperator right=comparison)?;
+
+comparisonOperator: '<' | '>' | '<=' | '>=';
+
+additiveExpression: left=multiplicativeExpression (op=additiveOperator right=additiveExpression)?;
+
+additiveOperator: '+' | '-';
+
+multiplicativeExpression:  left=primaryExpression (op=multiplicativeOperator right=multiplicativeExpression)?;
+
+multiplicativeOperator: '*' | '/' | '%';
+
+primaryExpression: memberAccess;
+
+memberAccess:  variable=Identifier '.' property=Identifier;
 
 insert: 'insert' type=classDefinition '(' ( pairs+=pair ( ',' pairs+=pair )* )? ')';
 
